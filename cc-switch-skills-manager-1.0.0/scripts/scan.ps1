@@ -97,10 +97,10 @@ foreach ($dir in $allDirs) {
         elseif ($inAG)        { $origin = @('agents') }
     } elseif ($inCC -and -not $inCL -and -not $inAG) {
         $status = 'ccswitch-only'; $origin = @()
+    } elseif ($inCC -and (($inCL -and -not $clLink) -or ($inAG -and -not $agLink))) {
+        $status = 'has-copies'; $origin = @()
     } elseif ($inCC -and ($clLink -or $agLink)) {
         $status = 'linked'; $origin = @()
-    } elseif ($inCC -and ($inCL -or $inAG)) {
-        $status = 'has-copies'; $origin = @()
     } else {
         $status = 'unknown'; $origin = @()
     }

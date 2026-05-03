@@ -1,4 +1,4 @@
-# CC-Switch Skills Manager - Migrate Agent-Native Skill to cc-switch
+﻿# CC-Switch Skills Manager - Migrate Agent-Native Skill to cc-switch
 # Moves an agent-native skill into cc-switch storage and registers in DB.
 # Does NOT touch the agent dir -- use sync-links.ps1 after to replace with junction.
 
@@ -57,9 +57,20 @@ if ((Test-Path $skillMd) -and (-not $Name -or -not $Description)) {
     try {
         $lines = Get-Content $skillMd -TotalCount 30 -Encoding UTF8 -ErrorAction Stop
         $inFront = $false; $front = ''
+        $prevKey = ''
         foreach ($l in $lines) {
             if ($l -eq '---') { if ($inFront) { break } else { $inFront = $true; continue } }
-            if ($inFront) { $front += $l + "`n" }
+            if ($inFront) {
+                if ($l -match '^[a-zA-Z_]+:') {
+                    $front += $l + "`n"
+                    $prevKey = ($l -split ':', 2)[0].Trim()
+                } elseif ($l -match '^\s+' -and $prevKey) {
+                    $trimmed = $l.TrimStart()
+                    if ($trimmed -and $trimmed -ne '>' -and $trimmed -ne '|') {
+                        $front += "  $trimmed`n"
+                    }
+                }
+            }
         }
         if ($front -and -not $Name -and ($front -match 'name:\s*(.+)')) {
             $Name = $matches[1].Trim().Trim('"').Trim("'")
@@ -97,10 +108,11 @@ $dbwritePy = Join-Path $scriptDir 'dbwrite.py'
 # HIGH #12: try-finally 确保环境变量清理
 try {
     $env:CCS_MIGRATE_DESC = $Description
-    python $dbwritePy $dbPath $Directory $Name "env_desc" $enCla $enCodex
+    python $dbwritePy $dbPath $Directory $Name $enCla $enCodex
 } finally {
     Remove-Item Env:\CCS_MIGRATE_DESC -ErrorAction SilentlyContinue
 }
 
 Write-Output "  Migration complete."
 Write-Output "  Next: run sync-links.ps1 to replace copies with junction links."
+

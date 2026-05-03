@@ -5,8 +5,9 @@ dir_name = sys.argv[2]
 name = sys.argv[3]
 # HIGH #4: 仅从环境变量读取，移除 sys.argv 回退（避免 GBK 编码损坏）
 desc = os.environ.get('CCS_MIGRATE_DESC', '')
-en_cla = int(sys.argv[5]) if len(sys.argv) > 5 else 0
-en_cod = int(sys.argv[6]) if len(sys.argv) > 6 else 0
+# argv: db, dir_name, name, en_cla, en_cod (desc via CCS_MIGRATE_DESC env var)
+en_cla = int(sys.argv[4]) if len(sys.argv) > 4 else 0
+en_cod = int(sys.argv[5]) if len(sys.argv) > 5 else 0
 
 # CRITICAL #1: WAL 模式 + 超时
 try:
