@@ -2,6 +2,7 @@
 param(
     [string]$CcSwitchDir = "$env:USERPROFILE\.cc-switch",
     [string]$ClaudeDir   = "$env:USERPROFILE\.claude\skills",
+    [string]$CodexDir    = "$env:USERPROFILE\.codex\skills",
     [string]$AgentsDir   = "$env:USERPROFILE\.agents\skills",
     [switch]$Compact
 )
@@ -62,12 +63,14 @@ function Get-DbSkills([string]$dbPath, [string]$scriptDir) {
 
 $ccsw = Get-DirSkills $skillsDir
 $clau = Get-DirSkills $ClaudeDir
+$code = Get-DirSkills $CodexDir
 $agen = Get-DirSkills $AgentsDir
 $db   = Get-DbSkills $dbPath $scriptDir
 
 $allDirs = [System.Collections.Generic.HashSet[string]]::new()
 foreach ($k in $ccsw.Keys) { $allDirs.Add($k) | Out-Null }
 foreach ($k in $clau.Keys) { $allDirs.Add($k) | Out-Null }
+foreach ($k in $code.Keys) { $allDirs.Add($k) | Out-Null }
 foreach ($k in $agen.Keys) { $allDirs.Add($k) | Out-Null }
 
 $rows = @()
@@ -77,12 +80,17 @@ foreach ($dir in $allDirs) {
     $dbI  = if ($inDb) { $db.$dir } else { $null }
     $inCC = $ccsw.ContainsKey($dir)
     $inCL = $clau.ContainsKey($dir)
+    $inCD = $code.ContainsKey($dir)
     $inAG = $agen.ContainsKey($dir)
 
-    $clLink = $null; $agLink = $null
+    $clLink = $null; $cdLink = $null; $agLink = $null
     if ($inCL) {
         $it = Get-Item -LiteralPath $clau[$dir].path -Force -EA SilentlyContinue
         $clLink = [bool]($it.LinkType)
+    }
+    if ($inCD) {
+        $it = Get-Item -LiteralPath $code[$dir].path -Force -EA SilentlyContinue
+        $cdLink = [bool]($it.LinkType)
     }
     if ($inAG) {
         $it = Get-Item -LiteralPath $agen[$dir].path -Force -EA SilentlyContinue
@@ -94,12 +102,13 @@ foreach ($dir in $allDirs) {
         $origin = @()
         if ($inCL -and $inAG) { $origin = @('claude','agents') }
         elseif ($inCL)        { $origin = @('claude') }
+        elseif ($inCD)        { $origin = @('codex') }
         elseif ($inAG)        { $origin = @('agents') }
-    } elseif ($inCC -and -not $inCL -and -not $inAG) {
+    } elseif ($inCC -and -not $inCL -and -not $inCD -and -not $inAG) {
         $status = 'ccswitch-only'; $origin = @()
-    } elseif ($inCC -and (($inCL -and -not $clLink) -or ($inAG -and -not $agLink))) {
+    } elseif ($inCC -and (($inCL -and -not $clLink) -or ($inCD -and -not $cdLink) -or ($inAG -and -not $agLink))) {
         $status = 'has-copies'; $origin = @()
-    } elseif ($inCC -and ($clLink -or $agLink)) {
+    } elseif ($inCC -and ($clLink -or $cdLink -or $agLink)) {
         $status = 'linked'; $origin = @()
     } else {
         $status = 'unknown'; $origin = @()
@@ -112,8 +121,10 @@ foreach ($dir in $allDirs) {
         origin     = $origin
         ccswitch   = $inCC
         claude     = $inCL
+        codex      = $inCD
         agents     = $inAG
         claude_lnk = $clLink
+        codex_lnk  = $cdLink
         agents_lnk = $agLink
         claude_en  = if ($dbI) { [int]$dbI.claude }   else { -1 }
         codex_en   = if ($dbI) { [int]$dbI.codex }    else { -1 }
@@ -132,13 +143,14 @@ if ($Compact) {
     Write-Output "=== CC-SWITCH SKILLS SCAN ==="
     Write-Output "Total:$($rows.Count)  Native:$nN  Linked:$nL  Copies:$nC  CCS-only:$nO"
     Write-Output ''
-    $fmt = '{0,-45} {1,-6} {2,-6} {3,-6}'
-    Write-Output ($fmt -f 'DIRECTORY','CCSW','CLAUDE','CODEX')
-    Write-Output ('-' * 65)
+    $fmt = '{0,-45} {1,-6} {2,-6} {3,-6} {4,-6}'
+    Write-Output ($fmt -f 'DIRECTORY','CCSW','CLAUDE','CODEX','AGENTS')
+    Write-Output ('-' * 75)
     foreach ($r in $rows) {
         $cc = if ($r.ccswitch) {'Y'} else {'-'}
         $cl = if ($r.claude)   {'Y'} else {'-'}
-        $co = if ($r.agents)   {'Y'} else {'-'}
+        $cd = if ($r.codex)    {'Y'} else {'-'}
+        $ag = if ($r.agents)   {'Y'} else {'-'}
         $tag = switch ($r.status) {
             'agent-native'  {'[NATIVE]'}
             'has-copies'    {'[COPY]  '}
@@ -146,7 +158,7 @@ if ($Compact) {
             'ccswitch-only' {'[CCS]   '}
             default         {'[?]     '}
         }
-        Write-Output ($fmt -f "$tag $($r.dir)", $cc, $cl, $co)
+        Write-Output ($fmt -f "$tag $($r.dir)", $cc, $cl, $cd, $ag)
     }
 } else {
     $report = @{ timestamp=(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'); skills=$rows }

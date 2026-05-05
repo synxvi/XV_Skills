@@ -6,10 +6,11 @@ param(
     [Parameter(Mandatory=$true)]
     [string]$Directory,
     [Parameter(Mandatory=$true)]
-    [ValidateSet('claude','agents')]
+    [ValidateSet('claude','codex','agents')]
     [string]$Source,
     [string]$CcSwitchDir = "$env:USERPROFILE\.cc-switch",
     [string]$ClaudeDir   = "$env:USERPROFILE\.claude\skills",
+    [string]$CodexDir    = "$env:USERPROFILE\.codex\skills",
     [string]$AgentsDir   = "$env:USERPROFILE\.agents\skills",
     [string]$Name,
     [string]$Description = '',
@@ -31,8 +32,9 @@ if ($Directory -match '\.\.' -or $Directory -match '^[\\/]') {
     Write-Error "Invalid directory name (path traversal detected): $Directory"; exit 1
 }
 
-if ($Source -eq 'claude') { $srcDir = Join-Path $ClaudeDir $Directory }
-else                      { $srcDir = Join-Path $AgentsDir $Directory }
+if ($Source -eq 'claude')      { $srcDir = Join-Path $ClaudeDir $Directory }
+elseif ($Source -eq 'codex')   { $srcDir = Join-Path $CodexDir $Directory }
+else                           { $srcDir = Join-Path $AgentsDir $Directory }
 
 if (-not (Test-Path $srcDir)) {
     Write-Error "Source not found: $srcDir"; exit 1
@@ -102,7 +104,7 @@ Write-Output "  Copied to cc-switch storage."
 
 # Step 2: Register in DB
 $enCla   = if ($Source -eq 'claude') { 1 } else { 0 }
-$enCodex = if ($Source -eq 'agents') { 1 } else { 0 }
+$enCodex = if ($Source -in @('codex','agents')) { 1 } else { 0 }
 
 $dbwritePy = Join-Path $scriptDir 'dbwrite.py'
 # HIGH #12: try-finally 确保环境变量清理

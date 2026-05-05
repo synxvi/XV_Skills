@@ -15,7 +15,7 @@ Manage skills across cc-switch, Claude, and Codex with a single source of truth.
 ## Core Principles
 
 1. **cc-switch is the single source** for all managed skills.
-2. **Agent directories** (`.claude/skills`, `.agents/skills`) hold **junction links**, not copies.
+2. **Agent directories** (`.claude/skills`, `.codex/skills`, `.agents/skills`) hold **junction links**, not copies.
 3. **Agent-native skills** (not in cc-switch DB) are **NEVER touched** by this tool.
 4. All destructive operations require **explicit user confirmation**.
 
